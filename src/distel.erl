@@ -180,16 +180,13 @@ find_source(Mod) ->
   end.
 
 %% Ret: AbsName | throw(Reason)
+%% Ret: AbsName | throw(Reason)
 guess_source_file(Mod, BeamFName) ->
   Erl = to_list(Mod) ++ ".erl",
   Dir = dirname(BeamFName),
   DotDot = dirname(Dir),
   try_srcs([src_from_beam(Mod),
-            join([Dir, Erl]),
-            join([DotDot, "src", Erl]),
-            join([DotDot, "src", "*", Erl]),
-            join([DotDot, "esrc", Erl]),
-            join([DotDot, "erl", Erl])]).
+            filelib:wildcard(join([DotDot, "**", Erl]))]).
 
 try_srcs([]) -> throw(nothing);
 try_srcs(["" | T]) -> try_srcs(T);
@@ -516,15 +513,6 @@ debug_subscriber(Pid) ->
     end,
     debug_subscriber(Pid).
 
-debug_format(Pid, {M,F,A}, Status, Info) ->
-    debug_format_row(to_list(fmt("~w", [Pid])),
-                     to_list(fmt("~p:~p/~p", [M,F,length(A)])),
-                     to_list(fmt("~w", [Status])),
-                     to_list(fmt("~w", [Info]))).
-
-debug_format_row(Pid, MFA, Status, Info) ->
-    fmt("~-12s ~-21s ~-9s ~-21s~n", [Pid, MFA, Status, Info]).
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% re-implementation of some int.erl functions
 
@@ -750,7 +738,6 @@ free_vars(Text) ->
 free_vars(Text, StartLine) ->
     %% StartLine/EndLine may be useful in error messages.
     {ok, Ts, EndLine} = erl_scan:string(Text, StartLine),
-    %%Ts1 = reverse(strip(reverse(Ts))),
     Ts2 = [{'begin', 1}] ++ Ts ++ [{'end', EndLine}, {dot, EndLine}],
     case erl_parse:parse_exprs(Ts2) of
         {ok, Es} ->
@@ -761,17 +748,6 @@ free_vars(Text, StartLine) ->
         {error, {_Line, erl_parse, Reason}} ->
             {error, fmt("~s", [Reason])}
     end.
-
-strip([{',', _}   | Ts]) -> strip(Ts);
-strip([{';', _}   | Ts]) -> strip(Ts);
-strip([{'.', _}   | Ts]) -> strip(Ts);
-strip([{'|', _}   | Ts]) -> strip(Ts);
-strip([{'=', _}   | Ts]) -> strip(Ts);
-strip([{'dot', _} | Ts]) -> strip(Ts);
-strip([{'->', _}  | Ts]) -> strip(Ts);
-strip([{'||', _}  | Ts]) -> strip(Ts);
-strip([{'of', _}  | Ts]) -> strip(Ts);
-strip(Ts)                -> Ts.
 
 %% ----------------------------------------------------------------------
 %% Online documentation
@@ -1055,7 +1031,7 @@ who_calls(Mm, Fm, Am) ->
         {ok, Calls} = xref_query(XREF),
         append([[xform(M,F,A,L) || L <- Ls] || {{{{M,F,A},_},_}, Ls} <- Calls])
     catch _:_ ->
-        {error,not_found}
+        {error,{who_calls,"try rebuilding callgraph (C-c C-d W)"}}
     end.
 
 xform(M, F, A, L) ->

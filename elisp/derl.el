@@ -11,15 +11,20 @@
 (require 'erlext)
 (require 'md5)
 (require 'erl)
+
+;;; Code:
+
 (eval-when-compile
   (require 'cl))
 
 (defvar erl-nodeup-hook nil
-  "Called with two args, NODE and FSM. NODE is a symbol of the form
+  "Called when peer appears.
+Called with two args, NODE and FSM.  NODE is a symbol of the form
 mynode@cockatoo, FSM is the net-fsm process of the connection.")
 
 (defvar erl-nodedown-hook nil
-  "Called with one arg, NODE, a symbol of the form mynode@cockatoo")
+  "Called when peer disappears.
+Called with one arg, NODE, a symbol of the form mynode@cockatoo")
 
 (defcustom derl-use-trace-buffer t
   "*Store erlang message communication in a trace buffer."
@@ -32,31 +37,25 @@ When NIL, we read ~/.erlang.cookie.")
 
 ;; Local variables
 
-(make-variable-buffer-local
- (defvar derl-connection-node nil
-   "Local variable recording the node name of the connection."))
+(defvar-local derl-connection-node nil
+  "Local variable recording the node name of the connection.")
 
-(make-variable-buffer-local
- (defvar derl-hdrlen 2
-   "Size in bytes of length headers of packets. Set to 2 during
-handshake, 4 when connected."))
+(defvar-local derl-hdrlen 2
+  "Size in bytes of length headers of packets. Set to 2 during
+handshake, 4 when connected.")
 
-(make-variable-buffer-local
- (defvar derl-alive nil
-  "Local variable set to t after handshaking."))
+(defvar-local derl-alive nil
+  "Local variable set to t after handshaking.")
 
-(make-variable-buffer-local
- (defvar derl-shutting-down nil
-   "Set to T during shutdown, when no longer servicing requests."))
+(defvar-local derl-shutting-down nil
+  "Set to T during shutdown, when no longer servicing requests.")
 
-(make-variable-buffer-local
- (defvar derl-request-queue nil
-  "Messages waiting to be sent to node."))
+(defvar-local derl-request-queue nil
+  "Messages waiting to be sent to node.")
 
-(make-variable-buffer-local
- (defvar derl-remote-links '()
+(defvar-local derl-remote-links '()
   "List of (LOCAL-PID . REMOTE-PID) for all distributed links (per-node.)
-Used for sending exit signals when the node goes down."))
+Used for sending exit signals when the node goes down.")
 
 ;; Optional feature flags
 (defconst derl-flag-published           #x01)
@@ -68,6 +67,7 @@ Used for sending exit signals when the node goes down."))
 (defconst derl-flag-hidden-atom-cache   #x40)
 (defconst derl-flag-new-fun-tags        #x80)
 (defconst derl-flag-extended-pids-ports #x100)
+(defconst derl-flag-utf8-atoms          #x10000)
 
 ;; ------------------------------------------------------------
 ;; External API
@@ -204,7 +204,9 @@ complete and we become live."
      (fsm-encode1 110)                  ; tag (n)
      (fsm-encode2 5)                    ; version
      (fsm-encode4 (logior derl-flag-extended-references
-                          derl-flag-extended-pids-ports))
+                          derl-flag-extended-pids-ports
+                          derl-flag-new-fun-tags
+                          derl-flag-utf8-atoms))
      (fsm-insert (symbol-name erl-node-name)))))
 
 (defun derl-send-challenge-reply (challenge)

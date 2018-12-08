@@ -18,6 +18,13 @@
 (eval-when-compile (require 'cl))
 (require 'mcase)
 
+(eval-and-compile
+  (or (fboundp 'defvar-local)
+      (defmacro defvar-local (var val &optional docstring)
+        (declare (debug defvar) (doc-string 3))
+        (list 'progn (list 'defvar var val docstring)
+              (list 'make-variable-buffer-local (list 'quote var))))))
+
 (autoload 'erl-dist-send "derl")
 (autoload 'erl-dist-reg-send "derl")
 (autoload 'erl-dist-exit "derl")
@@ -256,10 +263,6 @@ Also makes the current process immediately reschedulable."
   ;; the scheduler loop will catch this and know what to do
   (throw 'schedule-out 'reschedule))
 
-(defun erl-idle ()
-  (erl-receive ()
-      ()))
-
 (defun erl-make-ref ()
   "Make a unique reference object."
   (vector erl-tag 'erl-ref erl-node-name (incf erl-ref-counter) 0))
@@ -391,6 +394,10 @@ If LINK is true, the process is linked before being run."
       (erl-make-schedulable %pid))
     (erl-maybe-schedule)
     %pid))
+
+(defun erl-idle ()
+  (erl-receive ()
+      ()))
 
 (defun erl-deliver-message (pid message)
   "Deliver MESSAGE to the mailbox of the local process PID.
@@ -623,16 +630,15 @@ during the next `erl-schedule'."
       ((['put_chars s]
         (if (eq s nil)
             nil
-        (condition-case err
-            (save-excursion
-              (with-current-buffer (get-buffer-create "*erl-output*")
-                (save-selected-window
-                  (if erl-popup-on-output
-                      (select-window (or (get-buffer-window (current-buffer))
-                                         (display-buffer (current-buffer)))))
+          (condition-case err
+              (save-excursion
+                (with-current-buffer (get-buffer-create "*erl-output*")
                   (goto-char (point-max))
-                  (insert s))))
-          (error (message "Error in group leader: %S" err))))))
+                  (insert s)
+                  (when erl-popup-on-output
+                    (set-window-point (display-buffer (current-buffer))
+                                      (point-max)))))
+            (error (message "Error in group leader: %S" err))))))
     (&erl-group-leader-loop)))
 
 (when (null erl-group-leader)

@@ -1,5 +1,5 @@
 PACKAGE := distel
-VERSION := 4.02
+VERSION := $(shell git describe --tags 2> /dev/null)
 
 prefix      = /usr/local
 exec_prefix = ${prefix}
@@ -9,8 +9,8 @@ infodir     = ${prefix}/info
 erlc        = erlc
 emacs       = emacs
 
-ELISP_DIR = ${datadir}/distel/elisp
-EBIN_DIR = ${datadir}/distel/ebin
+ELISP_DIR   = ${datadir}/distel/elisp
+EBIN_DIR    = ${datadir}/distel/ebin
 ERL_SRC_DIR = ${datadir}/distel/src
 
 ########################################
@@ -19,27 +19,41 @@ ERL_SRC_DIR = ${datadir}/distel/src
 ERL_SRC := $(wildcard src/*.erl)
 ERL_OBJ := $(patsubst src/%.erl,ebin/%.beam,${ERL_SRC})
 
-ELISP_SRC := elisp/erlext.el elisp/mcase.el elisp/net-fsm.el elisp/epmd.el \
-	elisp/erl.el elisp/derl.el
+ELISP_SRC := $(wildcard elisp/*.el)
 ELISP_OBJ := $(patsubst %.el,%.elc,${ELISP_SRC})
+
+ELISP_SOME_SRC := $(filter-out elisp/distel%.el,${ELISP_SRC})
+ELISP_SOME_OBJ := $(patsubst %.el,%.elc,${ELISP_SOME_SRC})
 
 DOC_SRC  := doc/distel.texi
 INFO_OBJ := doc/distel.info
 PS_OBJ   := doc/distel.ps
 
-OBJECTS := ${ERL_OBJ} ${ELISP_OBJ} ${C_OBJ} ${INFO_OBJ} ${PS_OBJ}
+OBJECTS := ${ERL_OBJ} ${ELISP_OBJ} ${INFO_OBJ} ${PS_OBJ}
 
-base: ebin ${ERL_OBJ} ${ELISP_OBJ} ${C_OBJ}
+base: ebin ${ERL_OBJ} ${ELISP_SOME_OBJ}
+many: ebin ${ERL_OBJ} ${ELISP_OBJ}
 info: ${INFO_OBJ}
+erl: ${ERL_OBJ}
 postscript: ${PS_OBJ}
 all: base info postscript
 ebin:
 	mkdir ebin
 
-erl: ${ERL_OBJ}
-
 ########################################
 ## Rules
+.PHONY: release release_patch release_minor release_major
+
+release: release_patch
+
+release_major:
+	./release.sh major
+
+release_minor:
+	./release.sh minor
+
+release_patch:
+	./release.sh patch
 
 ## Erlang
 ebin/%.beam: src/%.erl
@@ -51,14 +65,14 @@ elisp/%.elc: elisp/%.el
 
 ## Info documentation
 doc/distel.info: ${DOC_SRC}
-	makeinfo -o $@ $<
+	command -v makeinfo && makeinfo -o $@ $< || echo fail
 
 ## Postscript documentation
 doc/distel.ps: doc/distel.dvi
-	dvips -o $@ $<
+	command -v dvips && dvips -o $@ $< || echo fail
 
 doc/distel.dvi: ${DOC_SRC}
-	(cd doc; texi2dvi distel.texi)
+	command -v texi2dvi && (cd doc; texi2dvi distel.texi) || echo fail
 
 ########################################
 
