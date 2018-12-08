@@ -1,9 +1,11 @@
-commit 7684fcd03345b8508e8d70c04be66561a8377b7a
+commit 850d606d250add3f93c7dd90b22ee66083895e5f
 Author: Eric Liang <eric@bmxlabs.com>
 Date:   Sat Dec 8 21:17:12 2018 +0800
 
     v4.0.7
 
+AUTHORS
+ChangeLog
 NEWS
 
 commit 30a3729ce8f7f0494ac41c2bfe9bd795f6d9a1d4
