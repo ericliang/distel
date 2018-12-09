@@ -8,6 +8,7 @@ datadir     = ${prefix}/share
 infodir     = ${prefix}/info
 erlc        = erlc
 emacs       = emacs
+erlang_lib  = /usr/local/lib/erlang/lib/tools-2.11.2/emacs/
 
 ELISP_DIR   = ${datadir}/distel/elisp
 EBIN_DIR    = ${datadir}/distel/ebin
@@ -61,7 +62,7 @@ ebin/%.beam: src/%.erl
 
 ## Elisp
 elisp/%.elc: elisp/%.el
-	${emacs} -batch -L elisp -f batch-byte-compile $<
+	${emacs} -L ${erlang_lib}  -batch -L elisp -f batch-byte-compile $<
 
 ## Info documentation
 doc/distel.info: ${DOC_SRC}
